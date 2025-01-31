@@ -20,6 +20,8 @@ typedef struct {
     verlet_point_t* points;
 } simulation_t;
 
+
+void InitSimulation(simulation_t* sim, float timestep);
 // returns false only at critical allocation exception
 bool AddPoints(simulation_t* state, size_t count, verlet_point_t* points);
 

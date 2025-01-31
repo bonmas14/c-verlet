@@ -3,8 +3,21 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "verlet.h"
-#include "../../raylib-master/src/raymath.h"
+#include "raymath.h"
 
+void InitSimulation(simulation_t* state, float timestep) {
+    void* data = MemAlloc(1024 * sizeof(verlet_point_t));
+
+    if (!data) {
+        TraceLog(LOG_ERROR, "Couldnt init sim");
+        return;
+    }
+
+    state->allocated_points_count = 1024;
+    state->points = (verlet_point_t*)data;
+    state->square_timestep = timestep * timestep;
+    state->used_points_count = 0;
+}
 
 bool AddPoints(simulation_t *state, size_t count, verlet_point_t *points) {
     size_t available = state->allocated_points_count - state->used_points_count;
@@ -16,9 +29,7 @@ bool AddPoints(simulation_t *state, size_t count, verlet_point_t *points) {
     if (available < count) {
         TraceLog(LOG_INFO, "Allocating new memory required.");
 
-        size_t to_allocate = (state->used_points_count + count * count);
-
-        to_allocate = to_allocate > 10 ? to_allocate : 10;
+        size_t to_allocate = state->allocated_points_count * 2;
 
         verlet_point_t* new_array = MemRealloc(state->points, to_allocate * sizeof(verlet_point_t));
 
@@ -79,25 +90,26 @@ bool RemovePoints(simulation_t *state, size_t count, uint32_t *ids) {
 }
 
 void StepSimulation(simulation_t *state, size_t steps) {
-    Vector3 gravity = Vector3Scale((Vector3) { .y = -9.81f }, state->square_timestep);
+    Vector3 gravity = Vector3Scale((Vector3) { .y = 0 }, state->square_timestep);
 
     for (size_t step = 0; step < steps; step++) {
         // collision with floor
+        /*
         for (size_t i = 0; i < state->used_points_count; i++) {
             verlet_point_t *point = &(state->points[i]);
 
-            if (point->current.y < 0) {
+            if (point->current.y < 0) { // problem is here. no surface tension
                 float disp = point->current.y - point->previous.y;
 
                 point->current.y = 0;
-                point->previous.y = disp * 0.40f;
+                point->previous.y = disp * 0.90f;
             }
         }
+        */
 
         for (size_t i = 0; i < state->used_points_count; i++) {
             verlet_point_t *point = &(state->points[i]);
             
-
             Vector3 disp = Vector3Subtract(point->current, point->previous);
             point->previous = point->current;
             point->current = Vector3Add(point->current, disp);
@@ -105,7 +117,6 @@ void StepSimulation(simulation_t *state, size_t steps) {
             point->acceleration = Vector3Add(point->acceleration, gravity);
             point->acceleration = Vector3Scale(point->acceleration, state->square_timestep);
             point->current = Vector3Add(point->current, point->acceleration);
-
         }
     }
 }
